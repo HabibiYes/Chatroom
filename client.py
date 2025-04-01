@@ -3,19 +3,31 @@ import socket
 import threading
 import time
 
+import pygame as pg
+from pygame import Color
+
 user = input('Username: ')
 
+# Pygame setup
+pg.init()
+
+# Display
+display = pg.display.set_mode((800, 600))
+bg_color = Color(128, 128, 128)
+
+# Font
+font = pg.font.Font('font.ttf', 32)
+
+# Client setup
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
 port = 50903
-
 s.settimeout(5)
 
 # School ip -> 172.19.67.112
 # House ip -> 192.168.254.99
 
 try:
-    s.connect(('172.19.67.112', port))
+    s.connect(('', port))
     print(socket.gethostbyname(socket.gethostname()))
     time_since_last_interaction = time.time()
 except socket.timeout:
@@ -29,7 +41,7 @@ print(s.recv(1024).decode())
 running = True
 
 def send_messages():
-    global running, time_since_last_interaction
+    global running, time_since_last_interaction, chat
     while running:
         message = input('')
         if message.lower().strip() == 'close':
@@ -38,6 +50,8 @@ def send_messages():
         
         try:
             s.send(f'{user}: {message}'.encode())
+            chat += message + '\n'
+            print(chat)
             time_since_last_interaction = time.time()
         except socket.timeout:
             pass
@@ -47,7 +61,7 @@ def send_messages():
             break
 
 def receive_messages():
-    global running, time_since_last_interaction
+    global running, time_since_last_interaction, chat
     while running:
         try:
             data = s.recv(1024)
@@ -60,6 +74,8 @@ def receive_messages():
             # Print server message
             if len(data) > 0:
                 print(data.decode())
+                chat += data.decode() + '\n'
+                print(chat)
             time_since_last_interaction = time.time()
         except socket.timeout:
             pass
@@ -72,11 +88,44 @@ receive_messages_thread = threading.Thread(target=receive_messages)
 
 send_messages_thread.start()
 receive_messages_thread.start()
-while running:
-    # Disconnect client if no interaction happens in 1 hour
-    if time.time() - time_since_last_interaction > 3600:
-        running = False
-        break
+
+chat = ''
+
+def main_loop():
+    global running
+    while running:
+        # # Disconnect client if no interaction happens in 1 hour
+        # if time.time() - time_since_last_interaction > 3600:
+        #     running = False
+        #     break
+
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                running = False
+                return
+
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_ESCAPE:
+                    pg.quit()
+                    running = False
+                    return
+
+        chat_objs = []
+        for line in chat.splitlines():
+            surf:pg.Surface = font.render(line, False, Color(255, 255, 255))
+            chat_objs.insert(0, surf)
+        
+        display.fill(bg_color)
+
+        y = display.get_height()
+        for surf in chat_objs:
+            y -= surf.get_height()
+            display.blit(surf, (display.get_width()/2 - surf.get_width()/2, y, surf.get_width(), surf.get_height()))
+
+        pg.display.update()
+
+main_loop()
 
 try:
     s.send('close'.encode())
