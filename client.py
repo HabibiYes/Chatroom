@@ -50,8 +50,8 @@ def send_messages():
         
         try:
             s.send(f'{user}: {message}'.encode())
-            chat += message + '\n'
-            print(chat)
+            chat.append(f'{user}: {message}' + '\n')
+            chat = chat[-10:]
             time_since_last_interaction = time.time()
         except socket.timeout:
             pass
@@ -74,8 +74,8 @@ def receive_messages():
             # Print server message
             if len(data) > 0:
                 print(data.decode())
-                chat += data.decode() + '\n'
-                print(chat)
+                chat.append(data.decode() + '\n')
+                chat = chat[-10:]
             time_since_last_interaction = time.time()
         except socket.timeout:
             pass
@@ -89,15 +89,17 @@ receive_messages_thread = threading.Thread(target=receive_messages)
 send_messages_thread.start()
 receive_messages_thread.start()
 
-chat = ''
+chat = []
+max_lines = 13
 
 def main_loop():
     global running
     while running:
-        # # Disconnect client if no interaction happens in 1 hour
-        # if time.time() - time_since_last_interaction > 3600:
-        #     running = False
-        #     break
+        # Disconnect client if no interaction happens in 1 hour
+        if time.time() - time_since_last_interaction > 3600:
+            pg.quit()
+            running = False
+            return
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -112,8 +114,8 @@ def main_loop():
                     return
 
         chat_objs = []
-        for line in chat.splitlines():
-            surf:pg.Surface = font.render(line, False, Color(255, 255, 255))
+        for msg in chat:
+            surf:pg.Surface = font.render(msg, False, Color(255, 255, 255))
             chat_objs.insert(0, surf)
         
         display.fill(bg_color)
