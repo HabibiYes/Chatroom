@@ -1,4 +1,4 @@
-import sys
+import os
 import socket
 import threading
 import time
@@ -105,4 +105,4 @@ except:
     raise
 finally:
     s.close()
-    sys.exit()
+    os._exit(0)

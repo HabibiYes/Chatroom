@@ -2,9 +2,12 @@ import os
 import socket
 import threading
 import time
+import ptext
 
 import pygame as pg
 from pygame import Color
+
+import numpy as np
 
 user = input('Username: ')
 
@@ -17,18 +20,22 @@ bg_color = Color(128, 128, 128)
 
 # Font
 font = pg.font.Font('font.ttf', 32)
+ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
 # Messages
 chat = []
 max_lines = 13
 
-# Chat box
+# Message box
 send = False
 typed_message = ''
 valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
               'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-              '`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+','[',']','{','}','\\','|',';',':','\'','"',
-              ',','.','<','>','/','?',' ']
+              '1','2','3','4','5','6','7','8','9','0', '`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
+              '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
+show_caret = True
+caret_flip_time = 0.75
+message_box_surface = pg.Surface((display.get_width() - 50, 75))
 
 # Client setup
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,10 +43,11 @@ port = 50903
 s.settimeout(5)
 
 # School ip -> 172.19.67.112
+# School ip -> 172.19.67.125
 # House ip -> 192.168.254.99
 
 try:
-    s.connect(('', port))
+    s.connect(('172.19.67.125', port))
     print(socket.gethostbyname(socket.gethostname()))
     time_since_last_interaction = time.time()
 except socket.timeout:
@@ -135,7 +143,7 @@ def main_loop():
                     typed_message = typed_message[:len(typed_message) - 1]
 
                 # Send the message
-                if event.key == pg.K_RETURN:
+                if event.key == pg.K_RETURN and len(typed_message) > 0:
                     send = True
                 
                 
@@ -144,25 +152,27 @@ def main_loop():
         # Messages
         chat_objs = []
         for msg in chat:
-            surf:pg.Surface = font.render(msg, False, Color(255, 255, 255))
+            surf:pg.Surface = font.render(msg, True, Color(255, 255, 255))
             chat_objs.insert(0, surf)
 
-        y = display.get_height()
+        y = display.get_height() - 125
         for surf in chat_objs:
             y -= surf.get_height()
             display.blit(surf, (display.get_width()/2 - surf.get_width()/2, y, surf.get_width(), surf.get_height()))
 
 
         # Message box
+        message_box_surface.fill(Color(175, 175, 175))
         x = 25
         y = display.get_height() - 100
         width = display.get_width() - 50
-        height = 75
-        rect = pg.Rect(x, y, width, height)
-        pg.draw.rect(display, Color(175, 175, 175), rect)
-        surf = font.render(typed_message, False, Color(30, 30, 30))
-        display.blit(surf, rect)
+        text_surface = ptext.getsurf(typed_message, width=width, color=(30, 30, 30)) # Write text
+        message_box_surface.blit(text_surface, (0,0))
+        
+        # if show_caret:
+        #     pg.draw.line(message_box_surface, Color(30, 30, 30), (text_surface.get_width(), 0), (text_surface.get_width(), 32), 2)
 
+        display.blit(message_box_surface, (x, y))
         pg.display.update()
 
 main_loop()
