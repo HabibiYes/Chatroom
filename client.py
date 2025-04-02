@@ -36,6 +36,12 @@ valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q
 show_caret = True
 caret_flip_time = 0.75
 message_box_surface = pg.Surface((display.get_width() - 50, 75))
+backspace_delay = 0.15
+backspace_time = 0
+
+# Delta time
+dt = 0
+last_time = time.time()
 
 # Client setup
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -113,7 +119,7 @@ send_messages_thread.start()
 receive_messages_thread.start()
 
 def main_loop():
-    global running, typed_message, send
+    global running, typed_message, send, backspace_time, last_time
     while running:
         # Disconnect client if no interaction happens in 1 hour
         if time.time() - time_since_last_interaction > 3600:
@@ -137,29 +143,29 @@ def main_loop():
                 # Check unicode validity, then add it to the typed message
                 if event.unicode in valid_keys:
                     typed_message += event.unicode
-                
-                # Delete the newest character in the typed message
-                if event.key == pg.K_BACKSPACE:
-                    typed_message = typed_message[:len(typed_message) - 1]
 
                 # Send the message
                 if event.key == pg.K_RETURN and len(typed_message) > 0:
                     send = True
+
+        dt = time.time() - last_time
+        last_time = time.time()
+
+
+        keys = pg.key.get_pressed()
+
+        backspace_time -= dt
+        if keys[pg.K_BACKSPACE] and backspace_time <= 0:
+            backspace_time = backspace_delay
+            typed_message = typed_message[:len(typed_message) - 1]
                 
-                
+
+
         display.fill(bg_color)
 
         # Messages
-        chat_objs = []
-        for msg in chat:
-            surf:pg.Surface = font.render(msg, True, Color(255, 255, 255))
-            chat_objs.insert(0, surf)
-
-        y = display.get_height() - 125
-        for surf in chat_objs:
-            y -= surf.get_height()
-            display.blit(surf, (display.get_width()/2 - surf.get_width()/2, y, surf.get_width(), surf.get_height()))
-
+        chat_str = ''.join(chat)
+        ptext.draw(chat_str, (0,0), width=display.get_width(), color=(255, 255, 255))
 
         # Message box
         message_box_surface.fill(Color(175, 175, 175))
@@ -167,7 +173,7 @@ def main_loop():
         y = display.get_height() - 100
         width = display.get_width() - 50
         text_surface = ptext.getsurf(typed_message, width=width, color=(30, 30, 30)) # Write text
-        message_box_surface.blit(text_surface, (0,0))
+        message_box_surface.blit(text_surface, (0,-max(0, text_surface.get_height() - message_box_surface.get_height())))
         
         # if show_caret:
         #     pg.draw.line(message_box_surface, Color(30, 30, 30), (text_surface.get_width(), 0), (text_surface.get_width(), 32), 2)
