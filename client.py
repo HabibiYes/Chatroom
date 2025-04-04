@@ -10,6 +10,8 @@ from pygame import Color
 
 import numpy as np
 
+from matplotlib import colors
+
 user = input('Username: ')
 
 # Pygame setup
@@ -26,7 +28,7 @@ ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
 
 # Messages
-chat = []
+chat:list[str] = []
 max_lines = 14
 chat_area = pg.rect.Rect(25, 25, display.get_width() - 50, display.get_height() - 50)
 
@@ -76,7 +78,7 @@ def send_messages():
 
         try:
             # Send text
-            s.send(f'{user}: {typed_message}'.encode())
+            s.send(f'{user}: {typed_message}'.strip().encode())
             chat.append(f'{user}: {typed_message}' + '\n')
             chat = chat[-max_lines:]
             time_since_last_interaction = time.time()
@@ -163,8 +165,26 @@ def main_loop():
         display.fill(bg_color)
 
         # Messages
-        chat_str = ''.join(chat)
-        ptext.draw(chat_str, (chat_area.x, chat_area.y), width=chat_area.width, color=(255, 255, 255))
+        chat_surfs:list[pg.Surface] = []
+        for msg in chat:
+            color = (1, 1, 1)
+            i = msg.find('<color=')
+            if i != -1 and msg[i::].startswith('<color=#') or msg[i::].startswith('<color='):
+                hex = msg[i+7:i+13] if msg[i::].startswith('<color=') else msg[i+8:i+14]
+                if not hex.startswith('#'):
+                    hex = '#' + hex
+
+                try:
+                    color = colors.hex2color(hex)
+                    msg = msg[0:i-1] + msg[i+14::] if msg[i::].startswith('<color=') else msg[i+15::]
+                except:
+                    pass
+            chat_surfs.append(ptext.getsurf(msg, width=chat_area.width, color=(color[0]*255, color[1]*255, color[2]*255)))
+
+        y = 0
+        for i, surf in enumerate(chat_surfs):
+            display.blit(surf, (0,y))
+            y += chat_surfs[i].get_height()
 
         # Message box
         message_box_surface.fill(Color(175, 175, 175))
