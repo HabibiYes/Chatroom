@@ -1,7 +1,9 @@
 import os
-import socket
+import socket, pickle
 import threading
 import time
+
+from objects import *
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -54,8 +56,10 @@ def receive_and_send_messages(client: socket.socket):
             # If data is valid, then perform actions
             # If not valid, then stop receiving from this client (client has disconnected)
             if len(data) > 0:
+                msg:Message = pickle.loads(data)
+
                 # Check for intentional disconnection
-                if data.decode() == 'close':
+                if msg.text == 'close':
                     index = connections.index(client)
                     client_threads.pop(index)
                     connections.pop(index)
@@ -65,7 +69,7 @@ def receive_and_send_messages(client: socket.socket):
                 temp_list = connections.copy()
                 for i, c in enumerate(temp_list):
                     try:
-                        c.send(''.encode())
+                        c.send(pickle.dumps(Message('')))
                     except:
                         client_threads.pop(i)
                         connections.pop(i)

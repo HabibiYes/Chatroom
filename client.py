@@ -1,5 +1,5 @@
 import os
-import socket
+import socket, pickle
 import threading
 import time
 
@@ -9,8 +9,9 @@ import pygame as pg
 from pygame import Color
 
 import numpy as np
+from colorsys import hsv_to_rgb
 
-from matplotlib import colors
+from objects import *
 
 user = input('Username: ')
 
@@ -28,7 +29,7 @@ ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
 
 # Messages
-chat:list[str] = []
+chat:list[Message] = []
 max_lines = 14
 chat_area = pg.rect.Rect(25, 25, display.get_width() - 50, display.get_height() - 50)
 
@@ -41,8 +42,11 @@ valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q
               '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
 message_box_surface = pg.Surface((display.get_width() - 50, 75))
 max_chars = 500 - len(f'{user}: ')
-backspace_delay = 0.15
-backspace_time = 0
+
+num_colors = 15
+color_choices = [(255, 255, 255), (0, 0, 0)]
+color_choices += [(hsv_to_rgb(_/num_colors, 1, 1)[0]*255, hsv_to_rgb(_/num_colors, 1, 1)[1]*255, hsv_to_rgb(_/num_colors, 1, 1)[2]*255) for _ in range(num_colors)]
+current_color = 0
 
 # Delta time
 dt = 0
@@ -57,7 +61,7 @@ s.settimeout(5)
 # House ip -> 192.168.254.xx
 
 try:
-    s.connect(('172.19.67.101', port))
+    s.connect(('', port))
     print(socket.gethostbyname(socket.gethostname()))
     time_since_last_interaction = time.time()
 except socket.timeout:
@@ -79,8 +83,11 @@ def send_messages():
 
         try:
             # Send text
-            s.send(f'{user}: {typed_message}'.strip().encode())
-            chat.append(f'{user}: {typed_message}' + '\n')
+            msg = Message(f'{user}: {typed_message}'.strip(), color_choices[current_color])
+            msg_data = pickle.dumps(msg)
+
+            s.send(msg_data)
+            chat.append(msg)
             chat = chat[-max_lines:]
             time_since_last_interaction = time.time()
             typed_message = ''
@@ -97,15 +104,16 @@ def receive_messages():
         try:
             data = s.recv(1024)
 
-            # Disconnect if server closes
-            if data.decode() == 'close':
-                running = False
-                break
-
-            # Print server message
+            # Check received data
             if len(data) > 0:
-                print(data.decode())
-                chat.append(data.decode() + '\n')
+                msg:Message = pickle.loads(data)
+                
+                # Disconnect if server closes
+                if msg.text == 'close':
+                    running = False
+                    break
+
+                chat.append(msg)
                 chat = chat[-max_lines:]
             time_since_last_interaction = time.time()
         except socket.timeout:
@@ -121,7 +129,7 @@ send_messages_thread.start()
 receive_messages_thread.start()
 
 def main_loop():
-    global running, typed_message, send, backspace_time, last_time
+    global running, typed_message, send, backspace_time, last_time, current_color
     while running:
         # Disconnect client if no interaction happens in 1 hour
         if time.time() - time_since_last_interaction > 3600:
@@ -146,6 +154,11 @@ def main_loop():
                 if event.unicode in valid_keys and len(typed_message) < max_chars:
                     typed_message += event.unicode
 
+                if event.key == pg.K_BACKSPACE:
+                    typed_message = typed_message[:len(typed_message) - 1]
+
+                current_color = min(max(current_color + int(event.key == pg.K_UP) - int(event.key == pg.K_DOWN), 0), len(color_choices)-1)
+
                 # Send the message
                 if event.key == pg.K_RETURN and len(typed_message) > 0:
                     send = True
@@ -154,33 +167,12 @@ def main_loop():
         last_time = time.time()
 
 
-        keys = pg.key.get_pressed()
-
-        backspace_time -= dt
-        if keys[pg.K_BACKSPACE] and backspace_time <= 0:
-            backspace_time = backspace_delay
-            typed_message = typed_message[:len(typed_message) - 1]
-                
-
-
         display.fill(bg_color)
 
         # Messages
         chat_surfs:list[pg.Surface] = []
         for msg in chat:
-            color = (1, 1, 1)
-            i = msg.find('<color=')
-            if i != -1 and msg[i::].startswith('<color=#') or msg[i::].startswith('<color='):
-                hex = msg[i+7:i+13] if msg[i::].startswith('<color=') else msg[i+8:i+14]
-                if not hex.startswith('#'):
-                    hex = '#' + hex
-
-                try:
-                    color = colors.hex2color(hex)
-                    msg = msg[0:i-1] + msg[i+14::] if msg[i::].startswith('<color=') else msg[i+15::]
-                except:
-                    pass
-            chat_surfs.append(ptext.getsurf(msg, width=chat_area.width, color=(color[0]*255, color[1]*255, color[2]*255)))
+            chat_surfs.append(ptext.getsurf(msg.text, width=chat_area.width, color=msg.color))
 
         y = 0
         for i, surf in enumerate(chat_surfs):
@@ -191,7 +183,7 @@ def main_loop():
         message_box_surface.fill(Color(175, 175, 175))
         x = 25
         y = display.get_height() - 100
-        text_surface = ptext.getsurf(typed_message, width=message_box_surface.get_width(), color=(30, 30, 30)) # Write text
+        text_surface = ptext.getsurf(typed_message, width=message_box_surface.get_width(), color=color_choices[current_color]) # Write text
         message_box_surface.blit(text_surface, (0,-max(0, text_surface.get_height() - message_box_surface.get_height())))
 
         display.blit(message_box_surface, (x, y))
@@ -200,7 +192,7 @@ def main_loop():
 main_loop()
 
 try:
-    s.send('close'.encode())
+    s.send(Message('close'))
     s.close()
 except:
     raise
