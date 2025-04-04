@@ -2,6 +2,7 @@ import os
 import socket
 import threading
 import time
+
 import ptext
 
 import pygame as pg
@@ -23,9 +24,10 @@ bg_color = Color(128, 128, 128)
 font = pg.font.Font('font.ttf', 32)
 ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
+
 # Messages
 chat = []
-max_lines = 13
+max_lines = 14
 chat_area = pg.rect.Rect(25, 25, display.get_width() - 50, display.get_height() - 50)
 
 # Message box
@@ -35,8 +37,6 @@ valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q
               'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
               '1','2','3','4','5','6','7','8','9','0','`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
               '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
-show_caret = True
-caret_flip_time = 0.75
 message_box_surface = pg.Surface((display.get_width() - 50, 75))
 backspace_delay = 0.15
 backspace_time = 0
@@ -78,7 +78,7 @@ def send_messages():
             # Send text
             s.send(f'{user}: {typed_message}'.encode())
             chat.append(f'{user}: {typed_message}' + '\n')
-            chat = chat[-10:]
+            chat = chat[-max_lines:]
             time_since_last_interaction = time.time()
             typed_message = ''
         except socket.timeout:
@@ -103,7 +103,7 @@ def receive_messages():
             if len(data) > 0:
                 print(data.decode())
                 chat.append(data.decode() + '\n')
-                chat = chat[-10:]
+                chat = chat[-max_lines:]
             time_since_last_interaction = time.time()
         except socket.timeout:
             pass
@@ -172,9 +172,6 @@ def main_loop():
         y = display.get_height() - 100
         text_surface = ptext.getsurf(typed_message, width=message_box_surface.get_width(), color=(30, 30, 30)) # Write text
         message_box_surface.blit(text_surface, (0,-max(0, text_surface.get_height() - message_box_surface.get_height())))
-        
-        # if show_caret:
-        #     pg.draw.line(message_box_surface, Color(30, 30, 30), (text_surface.get_width(), 0), (text_surface.get_width(), 32), 2)
 
         display.blit(message_box_surface, (x, y))
         pg.display.update()

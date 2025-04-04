@@ -739,7 +739,7 @@ _surf_tick_usage = {}
 _surf_size_total = 0
 _unrotated_size = {}
 _tick = 0
-def getsurf(text, **kwargs):
+def getsurf(text, **kwargs) -> pygame.Surface:
 	global _tick, _surf_size_total
 	options = _GetsurfOptions(**kwargs)
 	key = text, options.key()
