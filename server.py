@@ -83,16 +83,32 @@ def receive_and_send_messages(client: socket.socket):
         except:
             raise
 
+def server_idle_loop():
+    global running
+    while running:
+        if time.time() - time_since_last_interaction > 7200:
+            running = False
+            return
+        
+def server_close_prompt():
+    global running
+    while running:
+        inp = input()
+        # Close server on 'close' message
+        if inp.lower().strip() == 'close':
+            running = False
+            break
+
 # Start threads
 client_connection_thread = threading.Thread(target=clients)
 client_connection_thread.start()
+server_idle_thread = threading.Thread(target=server_idle_loop)
+server_idle_thread.start()
+server_close_thread = threading.Thread(target=server_close_prompt)
+server_close_thread.start()
 
 while running:
-    inp = input()
-    # Close server on 'close' message or no interaction for 2 hours
-    if inp.lower().strip() == 'close' or time.time() - time_since_last_interaction > 7200:
-        running = False
-        break
+    pass
 
 try:
     for c in connections:

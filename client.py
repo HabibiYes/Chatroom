@@ -40,6 +40,7 @@ valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q
               '1','2','3','4','5','6','7','8','9','0','`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
               '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
 message_box_surface = pg.Surface((display.get_width() - 50, 75))
+max_chars = 500 - len(f'{user}: ')
 backspace_delay = 0.15
 backspace_time = 0
 
@@ -142,7 +143,7 @@ def main_loop():
                     return
                 
                 # Check unicode validity, then add it to the typed message
-                if event.unicode in valid_keys:
+                if event.unicode in valid_keys and len(typed_message) < max_chars:
                     typed_message += event.unicode
 
                 # Send the message
