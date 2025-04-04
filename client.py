@@ -16,6 +16,7 @@ pg.init()
 
 # Display
 display = pg.display.set_mode((800, 600))
+pg.display.set_caption(user)
 bg_color = Color(128, 128, 128)
 
 # Font
@@ -25,13 +26,14 @@ ptext.DEFAULT_FONT_NAME = 'font.ttf'
 # Messages
 chat = []
 max_lines = 13
+chat_area = pg.rect.Rect(25, 25, display.get_width() - 50, display.get_height() - 50)
 
 # Message box
 send = False
 typed_message = ''
 valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
               'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-              '1','2','3','4','5','6','7','8','9','0', '`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
+              '1','2','3','4','5','6','7','8','9','0','`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
               '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
 show_caret = True
 caret_flip_time = 0.75
@@ -48,12 +50,11 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 port = 50903
 s.settimeout(5)
 
-# School ip -> 172.19.67.112
-# School ip -> 172.19.67.125
-# House ip -> 192.168.254.99
+# School ip -> 172.19.67.xxx
+# House ip -> 192.168.254.xx
 
 try:
-    s.connect(('172.19.67.125', port))
+    s.connect(('172.19.67.101', port))
     print(socket.gethostbyname(socket.gethostname()))
     time_since_last_interaction = time.time()
 except socket.timeout:
@@ -72,11 +73,9 @@ def send_messages():
         while not send:
             pass
         send = False
-        if typed_message.lower().strip() == 'close':
-            running = False
-            break
-        
+
         try:
+            # Send text
             s.send(f'{user}: {typed_message}'.encode())
             chat.append(f'{user}: {typed_message}' + '\n')
             chat = chat[-10:]
@@ -85,7 +84,7 @@ def send_messages():
         except socket.timeout:
             pass
         except:
-            print('Failed to send message')
+            print('Failed to send')
             running = False
             break
 
@@ -165,14 +164,13 @@ def main_loop():
 
         # Messages
         chat_str = ''.join(chat)
-        ptext.draw(chat_str, (0,0), width=display.get_width(), color=(255, 255, 255))
+        ptext.draw(chat_str, (chat_area.x, chat_area.y), width=chat_area.width, color=(255, 255, 255))
 
         # Message box
         message_box_surface.fill(Color(175, 175, 175))
         x = 25
         y = display.get_height() - 100
-        width = display.get_width() - 50
-        text_surface = ptext.getsurf(typed_message, width=width, color=(30, 30, 30)) # Write text
+        text_surface = ptext.getsurf(typed_message, width=message_box_surface.get_width(), color=(30, 30, 30)) # Write text
         message_box_surface.blit(text_surface, (0,-max(0, text_surface.get_height() - message_box_surface.get_height())))
         
         # if show_caret:

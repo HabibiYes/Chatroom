@@ -19,7 +19,7 @@ client_threads:list[threading.Thread] = []
 
 running = True
 
-s.settimeout(0.5)
+s.settimeout(1)
 
 time_since_last_interaction = time.time()
 
@@ -59,11 +59,9 @@ def receive_and_send_messages(client: socket.socket):
                     index = connections.index(client)
                     client_threads.pop(index)
                     connections.pop(index)
-                    print(len(connections))
                     break
                 
                 # Verify connections, remove any clients not connected
-                print(len(connections))
                 temp_list = connections.copy()
                 for i, c in enumerate(temp_list):
                     try:
@@ -72,14 +70,12 @@ def receive_and_send_messages(client: socket.socket):
                         client_threads.pop(i)
                         connections.pop(i)
                         print('Client not connected')
-                print(len(connections))
 
                 # Send message to all clients
                 for c in connections:
                     if client == c:
                         continue
                     c.send(data)
-                print(data.decode())
             else:
                 break
         except socket.timeout:
