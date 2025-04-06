@@ -8,7 +8,6 @@ import ptext
 import pygame as pg
 from pygame import Color
 
-import numpy as np
 from colorsys import hsv_to_rgb
 
 from objects import *
@@ -30,8 +29,8 @@ ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
 # Messages
 chat:list[Message] = []
-max_lines = 14
-chat_area = pg.rect.Rect(25, 25, display.get_width() - 50, display.get_height() - 50)
+max_messages = 20
+chat_area = pg.rect.Rect(25, 25, display.get_width() - 125, display.get_height() - 125)
 
 # Message box
 send = False
@@ -88,7 +87,7 @@ def send_messages():
 
             s.send(msg_data)
             chat.append(msg)
-            chat = chat[-max_lines:]
+            chat = chat[-max_messages:]
             time_since_last_interaction = time.time()
             typed_message = ''
         except socket.timeout:
@@ -107,6 +106,11 @@ def receive_messages():
             # Check received data
             if len(data) > 0:
                 msg:Message = pickle.loads(data)
+
+                # Check if message is a connection test message.
+                # Users cant send empty messages, so this has to be a test message.
+                if msg.text == '':
+                    continue
                 
                 # Disconnect if server closes
                 if msg.text == 'close':
@@ -114,7 +118,8 @@ def receive_messages():
                     break
 
                 chat.append(msg)
-                chat = chat[-max_lines:]
+                print('receive message')
+                chat = chat[-max_messages:]
             time_since_last_interaction = time.time()
         except socket.timeout:
             pass
@@ -129,7 +134,7 @@ send_messages_thread.start()
 receive_messages_thread.start()
 
 def main_loop():
-    global running, typed_message, send, backspace_time, last_time, current_color
+    global running, typed_message, send, last_time, current_color
     while running:
         # Disconnect client if no interaction happens in 1 hour
         if time.time() - time_since_last_interaction > 3600:
@@ -169,15 +174,18 @@ def main_loop():
 
         display.fill(bg_color)
 
-        # Messages
+        # Display Messages
         chat_surfs:list[pg.Surface] = []
+        chat_height = 0
         for msg in chat:
-            chat_surfs.append(ptext.getsurf(msg.text, width=chat_area.width, color=msg.color))
+            surf = ptext.getsurf(msg.text, width=chat_area.width, color=msg.color)
+            chat_height += surf.get_height()
+            chat_surfs.append(surf)
 
-        y = 0
-        for i, surf in enumerate(chat_surfs):
-            display.blit(surf, (0,y))
-            y += chat_surfs[i].get_height()
+        y = chat_area.y
+        for surf in chat_surfs:
+            display.blit(surf, (chat_area.x,y - max(chat_height - chat_area.height, 0)))
+            y += surf.get_height()
 
         # Message box
         message_box_surface.fill(Color(175, 175, 175))
@@ -187,6 +195,7 @@ def main_loop():
         message_box_surface.blit(text_surface, (0,-max(0, text_surface.get_height() - message_box_surface.get_height())))
 
         display.blit(message_box_surface, (x, y))
+        pg.draw.line(display, Color(0,0,0), chat_area.bottomleft, chat_area.bottomright, 3)
         pg.display.update()
 
 main_loop()

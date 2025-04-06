@@ -70,16 +70,25 @@ def receive_and_send_messages(client: socket.socket):
                 for i, c in enumerate(temp_list):
                     try:
                         c.send(pickle.dumps(Message('')))
-                    except:
+                    except BrokenPipeError:
                         client_threads.pop(i)
                         connections.pop(i)
                         print('Client not connected')
+                    except:
+                        raise
 
                 # Send message to all clients
                 for c in connections:
                     if client == c:
                         continue
-                    c.send(data)
+                    try:
+                        c.send(data)
+                    except BrokenPipeError:
+                        index = connections.index(c)
+                        client_threads.pop(i)
+                        connections.pop(i)
+                    except:
+                        raise
             else:
                 break
         except socket.timeout:
