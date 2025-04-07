@@ -31,6 +31,8 @@ ptext.DEFAULT_FONT_NAME = 'font.ttf'
 chat:list[Message] = []
 max_messages = 20
 chat_area = pg.rect.Rect(25, 25, display.get_width() - 125, display.get_height() - 125)
+scroll = 0
+scroll_speed = 1
 
 # Message box
 send = False
@@ -118,7 +120,6 @@ def receive_messages():
                     break
 
                 chat.append(msg)
-                print('receive message')
                 chat = chat[-max_messages:]
             time_since_last_interaction = time.time()
         except socket.timeout:
@@ -134,7 +135,7 @@ send_messages_thread.start()
 receive_messages_thread.start()
 
 def main_loop():
-    global running, typed_message, send, last_time, current_color
+    global running, typed_message, send, last_time, current_color, scroll
     while running:
         # Disconnect client if no interaction happens in 1 hour
         if time.time() - time_since_last_interaction > 3600:
@@ -168,6 +169,10 @@ def main_loop():
                 if event.key == pg.K_RETURN and len(typed_message) > 0:
                     send = True
 
+            if event.type == pg.MOUSEWHEEL:
+                scroll += event.y * scroll_speed
+                scroll = max(scroll, 0)
+
         dt = time.time() - last_time
         last_time = time.time()
 
@@ -184,7 +189,7 @@ def main_loop():
 
         y = chat_area.y
         for surf in chat_surfs:
-            display.blit(surf, (chat_area.x,y - max(chat_height - chat_area.height, 0)))
+            display.blit(surf, (chat_area.x,y - max(chat_height - chat_area.height, 0) + scroll))
             y += surf.get_height()
 
         # Message box
@@ -195,7 +200,6 @@ def main_loop():
         message_box_surface.blit(text_surface, (0,-max(0, text_surface.get_height() - message_box_surface.get_height())))
 
         display.blit(message_box_surface, (x, y))
-        pg.draw.line(display, Color(0,0,0), chat_area.bottomleft, chat_area.bottomright, 3)
         pg.display.update()
 
 main_loop()
