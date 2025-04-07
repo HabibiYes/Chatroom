@@ -13,6 +13,7 @@ from colorsys import hsv_to_rgb
 from objects import *
 
 user = input('Username: ')
+ip = input('Ipv4: ')
 
 # Pygame setup
 pg.init()
@@ -32,7 +33,7 @@ chat:list[Message] = []
 max_messages = 20
 chat_area = pg.rect.Rect(25, 25, display.get_width() - 125, display.get_height() - 125)
 scroll = 0
-scroll_speed = 1
+scroll_speed = 5
 
 # Message box
 send = False
@@ -62,7 +63,7 @@ s.settimeout(5)
 # House ip -> 192.168.254.xx
 
 try:
-    s.connect(('', port))
+    s.connect((ip, port))
     print(socket.gethostbyname(socket.gethostname()))
     time_since_last_interaction = time.time()
 except socket.timeout:
@@ -150,6 +151,8 @@ def main_loop():
                 return
 
             if event.type == pg.KEYDOWN:
+                keys = pg.key.get_pressed()
+
                 # Quit if escape key pressed
                 if event.key == pg.K_ESCAPE:
                     pg.quit()
@@ -160,13 +163,18 @@ def main_loop():
                 if event.unicode in valid_keys and len(typed_message) < max_chars:
                     typed_message += event.unicode
 
+                # New line in message
+                if keys[pg.K_RETURN] and keys[pg.K_LSHIFT]:
+                    typed_message += '\n'
+
+                # Delete most recent character
                 if event.key == pg.K_BACKSPACE:
                     typed_message = typed_message[:len(typed_message) - 1]
 
                 current_color = min(max(current_color + int(event.key == pg.K_UP) - int(event.key == pg.K_DOWN), 0), len(color_choices)-1)
 
                 # Send the message
-                if event.key == pg.K_RETURN and len(typed_message) > 0:
+                if keys[pg.K_RETURN] and not keys[pg.K_LSHIFT] and len(typed_message) > 0:
                     send = True
 
             if event.type == pg.MOUSEWHEEL:
