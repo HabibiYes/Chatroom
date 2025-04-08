@@ -1,5 +1,5 @@
 import os
-import socket, pickle
+import socket, json
 import threading
 import time
 
@@ -8,7 +8,7 @@ from pygame import Color
 
 import ptext
 from colorsys import hsv_to_rgb
-from objects import *
+from messages import *
 
 def main():
     user = '/' * 11
@@ -30,7 +30,7 @@ def main():
     ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
     # Messages
-    chat:list[Message] = []
+    chat:list[dict] = []
     max_messages = 20
     chat_area = pg.rect.Rect(25, 25, display.get_width() - 125, display.get_height() - 125)
     scroll = 0
@@ -86,11 +86,11 @@ def main():
         nonlocal running, time_since_last_interaction, chat, typed_message
         try:
             # Create data from message object to send
-            msg = Message(f'{user}: {typed_message}'.strip(), color_choices[current_color])
-            msg_data = pickle.dumps(msg)
+            msg = create_message(f'{user}: {typed_message}'.strip(), color_choices[current_color])
+            msg_data = json.dumps(msg)
 
             # Send message
-            s.send(msg_data)
+            s.send(msg_data.encode())
             chat.append(msg)
             chat = chat[-max_messages:]
             time_since_last_interaction = time.time()
@@ -110,15 +110,15 @@ def main():
 
                 # Check received data
                 if len(data) > 0:
-                    msg:Message = pickle.loads(data)
+                    msg:dict = json.loads(data.decode())
 
                     # Check if message is a connection test message.
                     # Users cant send empty messages, so this has to be a test message.
-                    if msg.text == '':
+                    if msg['text'] == '':
                         continue
                     
                     # Disconnect if server closes
-                    if msg.text == 'close':
+                    if msg['text'] == 'close':
                         running = False
                         break
 
@@ -189,7 +189,7 @@ def main():
             chat_surfs:list[pg.Surface] = []
             chat_height = 0
             for msg in chat:
-                surf = ptext.getsurf(msg.text, width=chat_area.width, color=msg.color)
+                surf = ptext.getsurf(msg['text'], width=chat_area.width, color=msg['color'])
                 chat_height += surf.get_height()
                 chat_surfs.append(surf)
 
@@ -213,7 +213,7 @@ def main():
 
     try:
         # Send intentional disconnect message
-        s.send(pickle.dumps(Message('close')))
+        s.send(json.dumps(create_message('close')))
         s.close()
     except:
         raise

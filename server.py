@@ -1,9 +1,9 @@
 import os
-import socket, pickle
+import socket, json
 import threading
 import time
 
-from objects import *
+from messages import *
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -54,10 +54,10 @@ def receive_and_send_messages(client: socket.socket):
             # If data is valid, then perform actions
             # If not valid, then stop receiving from this client (client has disconnected)
             if len(data) > 0:
-                msg:Message = pickle.loads(data)
+                msg:dict = json.loads(data.decode())
 
                 # Check for intentional disconnection
-                if msg.text == 'close':
+                if msg['text'] == 'close':
                     connections.remove(client)
                     print('Intentional disconnect')
                     return
@@ -109,7 +109,7 @@ while running:
 
 try:
     for c in connections:
-        c.send('close'.encode())
+        c.send(json.dumps(create_message('close')))
 except:
     raise
 finally:
