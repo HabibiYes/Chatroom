@@ -17,7 +17,6 @@ s.listen(5)
 print('Socket is listening')
 
 connections:list[socket.socket] = []
-client_threads:list[threading.Thread] = []
 
 running = True
 
@@ -41,7 +40,6 @@ def clients():
             # This thread will send a received message to all other clients
             client_thread = threading.Thread(target=lambda : receive_and_send_messages(c))
             client_thread.start()
-            client_threads.append(client_thread)
         except socket.timeout:
             pass
         except:
@@ -60,23 +58,9 @@ def receive_and_send_messages(client: socket.socket):
 
                 # Check for intentional disconnection
                 if msg.text == 'close':
-                    index = connections.index(client)
-                    client_threads.pop(index)
-                    connections.pop(index)
+                    connections.remove(client)
                     print('Intentional disconnect')
-                    break
-                
-                # Verify connections, remove any clients not connected
-                temp_list = connections.copy()
-                for i, c in enumerate(temp_list):
-                    try:
-                        c.send(pickle.dumps(Message('')))
-                    except BrokenPipeError:
-                        client_threads.pop(i)
-                        connections.pop(i)
-                        print('Client not connected')
-                    except:
-                        raise
+                    return
 
                 # Send message to all clients
                 for c in connections:
@@ -84,10 +68,9 @@ def receive_and_send_messages(client: socket.socket):
                         continue
                     try:
                         c.send(data)
-                    except BrokenPipeError:
-                        index = connections.index(c)
-                        client_threads.pop(i)
-                        connections.pop(i)
+                    except BrokenPipeError: # If client cannot be reached (disconnection), remove them from connections
+                        print('Client not connected')
+                        connections.remove(c)
                     except:
                         raise
             else:
