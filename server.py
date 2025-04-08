@@ -33,7 +33,7 @@ def clients():
             c, addr = s.accept()
             connections.append(c)
             print('Connection from ', addr)
-            c.send('Thanks for connecting! To disconnect, type "close" or kill the terminal.'.encode())
+            c.send('Thanks for connecting! To disconnect, close the application or kill the terminal.'.encode())
 
             time_since_last_interaction = time.time()
 
@@ -63,6 +63,7 @@ def receive_and_send_messages(client: socket.socket):
                     index = connections.index(client)
                     client_threads.pop(index)
                     connections.pop(index)
+                    print('Intentional disconnect')
                     break
                 
                 # Verify connections, remove any clients not connected

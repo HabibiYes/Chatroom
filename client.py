@@ -210,7 +210,7 @@ def main():
     main_loop()
 
     try:
-        s.send(Message('close'))
+        s.send(pickle.dumps(Message('close')))
         s.close()
     except:
         raise
