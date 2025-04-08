@@ -3,17 +3,15 @@ import socket, pickle
 import threading
 import time
 
-import ptext
-
 import pygame as pg
 from pygame import Color
 
+import ptext
 from colorsys import hsv_to_rgb
-
 from objects import *
 
 def main():
-    user = '///////////'
+    user = '/' * 11
     while len(user) > 10:
         user = input('Username: ')
         if len(user) > 10:
@@ -29,9 +27,7 @@ def main():
     bg_color = Color(128, 128, 128)
 
     # Font
-    font = pg.font.Font('font.ttf', 32)
     ptext.DEFAULT_FONT_NAME = 'font.ttf'
-
 
     # Messages
     chat:list[Message] = []
@@ -50,6 +46,7 @@ def main():
     message_box_surface = pg.Surface((display.get_width() - 50, 75))
     max_chars = 500 - len(f'{user}: ')
 
+    # Colors
     num_colors = 15
     color_choices = [(255, 255, 255), (0, 0, 0)]
     color_choices += [(hsv_to_rgb(_/num_colors, 1, 1)[0]*255, hsv_to_rgb(_/num_colors, 1, 1)[1]*255, hsv_to_rgb(_/num_colors, 1, 1)[2]*255) for _ in range(num_colors)]
@@ -57,16 +54,20 @@ def main():
 
     # Delta time
     dt = 0
-    last_time = time.time()
+    ticks = pg.time.get_ticks()
+    last_ticks = ticks
+    def get_delta_time():
+        nonlocal dt, ticks, last_ticks
+        ticks = pg.time.get_ticks()
+        dt = (ticks - last_ticks) / 1000
+        last_ticks = ticks
 
     # Client setup
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     port = 50903
     s.settimeout(5)
 
-    # School ip -> 172.19.67.xxx
-    # House ip -> 192.168.254.xx
-
+    # Connect to server
     try:
         s.connect((ip, port))
         print(socket.gethostbyname(socket.gethostname()))
@@ -84,17 +85,18 @@ def main():
     def send_message():
         nonlocal running, time_since_last_interaction, chat, typed_message
         try:
-            # Send text
+            # Create data from message object to send
             msg = Message(f'{user}: {typed_message}'.strip(), color_choices[current_color])
             msg_data = pickle.dumps(msg)
 
+            # Send message
             s.send(msg_data)
             chat.append(msg)
             chat = chat[-max_messages:]
             time_since_last_interaction = time.time()
             typed_message = ''
         except socket.timeout:
-            pass
+            return
         except:
             print('Failed to send')
             running = False
@@ -133,7 +135,7 @@ def main():
     receive_messages_thread.start()
 
     def main_loop():
-        nonlocal running, typed_message, send, last_time, current_color, scroll
+        nonlocal running, typed_message, send, current_color, scroll
         while running:
             # Disconnect client if no interaction happens in 1 hour
             if time.time() - time_since_last_interaction > 3600:
@@ -178,13 +180,12 @@ def main():
                     scroll += event.y * scroll_speed
                     scroll = max(scroll, 0)
 
-            dt = time.time() - last_time
-            last_time = time.time()
+            get_delta_time()
 
 
             display.fill(bg_color)
 
-            # Display Messages
+            # Get height of all chat messages to keep the on screen
             chat_surfs:list[pg.Surface] = []
             chat_height = 0
             for msg in chat:
@@ -192,6 +193,7 @@ def main():
                 chat_height += surf.get_height()
                 chat_surfs.append(surf)
 
+            # Display Messages
             y = chat_area.y
             for surf in chat_surfs:
                 display.blit(surf, (chat_area.x,y - max(chat_height - chat_area.height, 0) + scroll))
@@ -210,6 +212,7 @@ def main():
     main_loop()
 
     try:
+        # Send intentional disconnect message
         s.send(pickle.dumps(Message('close')))
         s.close()
     except:
