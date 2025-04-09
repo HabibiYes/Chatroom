@@ -11,23 +11,65 @@ from colorsys import hsv_to_rgb
 from messages import *
 
 def main():
-    user = '/' * 11
-    while len(user) > 10:
-        user = input('Username: ')
-        if len(user) > 10:
-            print('Username must be 10 characters or less.')
-    ip = input('Ipv4: ')
+    valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+                'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+                '1','2','3','4','5','6','7','8','9','0','`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
+                '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
+    
+    # Font
+    ptext.DEFAULT_FONT_NAME = 'font.ttf'
 
     # Pygame setup
     pg.init()
 
     # Display
     display = pg.display.set_mode((800, 600))
-    pg.display.set_caption(user)
     bg_color = Color(128, 128, 128)
 
-    # Font
-    ptext.DEFAULT_FONT_NAME = 'font.ttf'
+    # Get username and IPv4
+    inputs_done = [False, False]
+    current_input = 0
+    user = ''
+    ip = ''
+    pg.event.set_allowed([pg.KEYDOWN])
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.KEYDOWN:
+                if event.unicode in valid_keys:
+                    if current_input == 0:
+                        user += event.unicode
+                        print(user)
+                    elif current_input == 1:
+                        ip += event.unicode
+                        print(ip)
+
+                if event.key == pg.K_RETURN:
+                    inputs_done[current_input] = True
+                    current_input += 1
+                    if current_input == 2:
+                        break
+
+                if event.key == pg.K_BACKSPACE:
+                    if current_input == 0:
+                        user = user[0:len(user)-1]
+                    if current_input == 1:
+                        ip = ip[0:len(ip)-1]
+
+                if event.key == pg.K_ESCAPE:
+                    pg.quit()
+                    os._exit(0)
+        
+        if all(inputs_done):
+            break
+
+        display.fill(bg_color)
+
+        surf1 = ptext.getsurf(user, width=display.get_width())
+        surf2 = ptext.getsurf(ip, width=display.get_width())
+        display.blit(surf1, (0,0))
+        display.blit(surf2, (0,surf1.get_height()))
+
+        pg.display.update()
 
     # Messages
     chat:list[dict] = []
@@ -39,10 +81,6 @@ def main():
     # Message box
     send = False
     typed_message = ''
-    valid_keys = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
-                'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-                '1','2','3','4','5','6','7','8','9','0','`','~','!','@','#','$','%','^','&','*','(',')','-','_','=','+',
-                '[',']','{','}','\\','|',';',':','\'','"',',','.','<','>','/','?',' ']
     message_box_surface = pg.Surface((display.get_width() - 50, 75))
     max_chars = 500 - len(f'{user}: ')
 
@@ -136,6 +174,8 @@ def main():
 
     def main_loop():
         nonlocal running, typed_message, send, current_color, scroll
+
+        pg.event.set_allowed([pg.KEYDOWN, pg.MOUSEWHEEL])
         while running:
             # Disconnect client if no interaction happens in 1 hour
             if time.time() - time_since_last_interaction > 3600:
