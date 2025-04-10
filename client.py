@@ -1,4 +1,4 @@
-import os
+import sys, os
 import socket, json
 import threading
 import time
@@ -34,6 +34,10 @@ def main():
     pg.event.set_allowed([pg.KEYDOWN])
     while True:
         for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                sys.exit()
+
             if event.type == pg.KEYDOWN:
                 if event.unicode in valid_keys:
                     if current_input == 0:
@@ -57,15 +61,15 @@ def main():
 
                 if event.key == pg.K_ESCAPE:
                     pg.quit()
-                    os._exit(0)
+                    sys.exit()
         
         if all(inputs_done):
             break
 
         display.fill(bg_color)
 
-        surf1 = ptext.getsurf(user, width=display.get_width())
-        surf2 = ptext.getsurf(ip, width=display.get_width())
+        surf1 = ptext.getsurf('User: ' + user, width=display.get_width())
+        surf2 = ptext.getsurf('IPv4: ' + ip, width=display.get_width())
         display.blit(surf1, (0,0))
         display.blit(surf2, (0,surf1.get_height()))
 
